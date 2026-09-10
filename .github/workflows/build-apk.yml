@@ -145,104 +145,104 @@ jobs:
                   setContentView(root);
               }
 
-              void showHome() {
-    base("WiFi Billing WA");
+                        void showHome() {
+              base("WiFi Billing WA");
 
-    TextView welcome = title(
-        "Dashboard Billing\n" +
-        "Kelola pelanggan dan tagihan internet",
-        18
-    );
-    root.addView(welcome);
+              TextView welcome = title(
+                  "Dashboard Billing\n" +
+                  "Kelola pelanggan dan tagihan internet",
+                  18
+              );
+              root.addView(welcome);
 
-    int count = Integer.parseInt(get("c_count", "0"));
-    int onlineCount = 0;
+              int count = Integer.parseInt(get("count", "0"));
+              int onlineCount = 0;
 
-    for (int i = 0; i < count; i++) {
-        if (get("c_" + i + "_online", "0").equals("1")) {
-            onlineCount++;
-        }
-    }
+              for (int i = 0; i < count; i++) {
+                  if (get("c_" + i + "_online", "0").equals("1")) {
+                      onlineCount++;
+                  }
+              }
 
-    int offlineCount = count - onlineCount;
+              int offlineCount = count - onlineCount;
 
-    LinearLayout row1 = new LinearLayout(this);
-    row1.setOrientation(LinearLayout.HORIZONTAL);
+              LinearLayout row1 = new LinearLayout(this);
+              row1.setOrientation(LinearLayout.HORIZONTAL);
 
-    TextView total = title(
-        "👥\n" + count + "\nTotal Pelanggan",
-        16
-    );
-    total.setGravity(Gravity.CENTER);
-    total.setPadding(8, 20, 8, 20);
-    total.setBackgroundColor(0xff4caf50);
+              TextView total = title(
+                  "👥\n" + count + "\nTotal Pelanggan",
+                  16
+              );
+              total.setGravity(Gravity.CENTER);
+              total.setPadding(8, 20, 8, 20);
+              total.setBackgroundColor(0xff4caf50);
 
-    TextView online = title(
-        "🟢\n" + onlineCount + "\nPelanggan Online",
-        16
-    );
-    online.setGravity(Gravity.CENTER);
-    online.setPadding(8, 20, 8, 20);
-    online.setBackgroundColor(0xff2196f3);
+              TextView online = title(
+                  "🟢\n" + onlineCount + "\nPelanggan Online",
+                  16
+              );
+              online.setGravity(Gravity.CENTER);
+              online.setPadding(8, 20, 8, 20);
+              online.setBackgroundColor(0xff2196f3);
 
-    LinearLayout.LayoutParams cp =
-        new LinearLayout.LayoutParams(0, -2, 1);
-    cp.setMargins(4, 4, 4, 4);
+              LinearLayout.LayoutParams cp =
+                  new LinearLayout.LayoutParams(0, -2, 1);
+              cp.setMargins(4, 4, 4, 4);
 
-    row1.addView(total, cp);
-    row1.addView(online, cp);
-    root.addView(row1);
+              row1.addView(total, cp);
+              row1.addView(online, cp);
+              root.addView(row1);
 
-    LinearLayout row2 = new LinearLayout(this);
-    row2.setOrientation(LinearLayout.HORIZONTAL);
+              LinearLayout row2 = new LinearLayout(this);
+              row2.setOrientation(LinearLayout.HORIZONTAL);
 
-    TextView offline = title(
-        "🔴\n" + offlineCount + "\nPelanggan Offline",
-        16
-    );
-    offline.setGravity(Gravity.CENTER);
-    offline.setPadding(8, 20, 8, 20);
-    offline.setBackgroundColor(0xffff4436);
+              TextView offline = title(
+                  "🔴\n" + offlineCount + "\nPelanggan Offline",
+                  16
+              );
+              offline.setGravity(Gravity.CENTER);
+              offline.setPadding(8, 20, 8, 20);
+              offline.setBackgroundColor(0xffff4436);
 
-    TextView status = title(
-        "📡\n" +
-        (get("mt_ip", "").isEmpty()
-            ? "Belum terhubung"
-            : "MikroTik Terhubung"),
-        16
-    );
-    status.setGravity(Gravity.CENTER);
-    status.setPadding(8, 20, 8, 20);
-    status.setBackgroundColor(0xffffc107);
+              TextView status = title(
+                  "📡\n" +
+                  (get("mt_ip", "").isEmpty()
+                      ? "Belum terhubung"
+                      : "MikroTik Terhubung"),
+                  16
+              );
+              status.setGravity(Gravity.CENTER);
+              status.setPadding(8, 20, 8, 20);
+              status.setBackgroundColor(0xffffc107);
 
-    row2.addView(offline, cp);
-    row2.addView(status, cp);
-    root.addView(row2);
+              row2.addView(offline, cp);
+              row2.addView(status, cp);
+              root.addView(row2);
 
-    Button sync = btn("🔄 SINKRONISASI MIKROTIK");
-    root.addView(sync);
-    sync.setOnClickListener(v -> syncNow());
+              Button sync = btn("🔄 SINKRONISASI MIKROTIK");
+              root.addView(sync);
+              sync.setOnClickListener(v -> syncNow());
 
-    Button customers = btn("👥 DAFTAR PELANGGAN");
-    root.addView(customers);
-    customers.setOnClickListener(v -> showCustomers());
+              Button customers = btn("👥 DAFTAR PELANGGAN");
+              root.addView(customers);
+              customers.setOnClickListener(v -> showCustomers());
 
-    Button add = btn("➕ TAMBAH PELANGGAN");
-    root.addView(add);
-    add.setOnClickListener(v -> addCustomer());
+              Button add = btn("➕ TAMBAH PELANGGAN");
+              root.addView(add);
+              add.setOnClickListener(v -> addCustomer());
 
-    Button settings = btn("⚙ PENGATURAN MIKROTIK");
-    root.addView(settings);
-    settings.setOnClickListener(v -> showSettings());
+              Button settings = btn("⚙ PENGATURAN MIKROTIK");
+              root.addView(settings);
+              settings.setOnClickListener(v -> showSettings());
 
-    TextView note = title(
-        "Catatan:\n" +
-        "HP harus terhubung ke jaringan yang dapat mengakses IP MikroTik.\n" +
-        "Jangan membuka port API 8728 ke Internet umum.",
-        14
-    );
-    root.addView(note);
-}
+              TextView note = title(
+                  "Catatan:\n" +
+                  "HP harus terhubung ke jaringan yang dapat mengakses IP MikroTik.\n" +
+                  "Jangan membuka port API 8728 ke Internet umum.",
+                  14
+              );
+              root.addView(note);
+          }
 
               void showSettings() {
                   base("Pengaturan MikroTik");
