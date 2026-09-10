@@ -241,11 +241,11 @@ jobs:
                       LinearLayout card=new LinearLayout(this);
                       card.setOrientation(LinearLayout.VERTICAL);
 
-                      String info =
-                          x[0] +
-                          "\\nPaket: " + x[3] +
-                          "\\nTagihan: Rp " + x[4] +
-                          "\\nJatuh tempo: " + x[5];
+                      String info =               
+                              x[0] +
+                              "\nPaket: " + x[3] +
+                              "\nTagihan: Rp " + x[4] +
+                              "\nJatuh tempo: " + x[5];
 
                       card.addView(text(info,17));
 
@@ -276,13 +276,12 @@ jobs:
                       if(phone.startsWith("0")) phone="62"+phone.substring(1);
 
                       String msg =
-                          "TAGIHAN INTERNET WIFI\\n\\n" +
-                          "Pelanggan: " + x[0] + "\\n" +
-                          "Paket: " + x[3] + "\\n" +
-                          "Tagihan: Rp " + x[4] + "\\n" +
-                          "Jatuh tempo: " + x[5] + "\\n\\n" +
-                          "Mohon melakukan pembayaran tepat waktu. Terima kasih.";
-
+                              "TAGIHAN INTERNET WIFI\n\n" +
+                              "Pelanggan: " + x[0] + "\n" +
+                              "Paket: " + x[3] + "\n" +
+                              "Tagihan: Rp " + x[4] + "\n" +
+                              "Jatuh tempo: " + x[5] + "\n\n" +
+                              "Mohon melakukan pembayaran tepat waktu. Terima kasih.";
                       String url="https://wa.me/"+phone+
                           "?text="+URLEncoder.encode(msg,"UTF-8");
 
