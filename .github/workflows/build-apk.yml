@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
       - name: Create Android project
         run: |
           mkdir -p app/src/main/java/com/wifibilling/wa
@@ -307,10 +309,7 @@ jobs:
                   }
               }
           }
-          EOF
-
-      - name: Checkout
-        uses: actions/checkout@v4
+          
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
