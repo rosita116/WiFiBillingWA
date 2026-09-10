@@ -481,7 +481,14 @@ jobs:
                       LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);
                       lp.setMargins(0,0,0,12);
                       list.addView(t,lp);
-                  }
+                      Button edit = btn("✏️ EDIT");
+                      list.addView(edit);
+
+                      final int index = i;
+
+                      edit.setOnClickListener(v -> 
+                      showEditCustomer(index));
+                      }
 
                   Button back=btn("← Kembali");
                   root.addView(back);
