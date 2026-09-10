@@ -285,8 +285,8 @@ jobs:
                       String online=get("c_"+i+"_online","0");
 
                       TextView t=title(
-                          n+"\nPPPoE: "+p+"\\nPaket: "+pack+
-                          "\nTagihan: "+amount+"\\nJatuh tempo: "+due+
+                          n+"\nPPPoE: "+p+"\nPaket: "+pack+
+                          "\nTagihan: "+amount+"\nJatuh tempo: "+due+
                           "\nStatus: "+(online.equals("1") ? "ONLINE" : "OFFLINE"),
                           17);
                       t.setBackgroundColor(0xffeeeeee);
