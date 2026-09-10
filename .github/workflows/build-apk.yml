@@ -410,8 +410,7 @@ jobs:
 
                       for (String s : response) {
                           if (s.startsWith("!trap")) {
-                              throw new IOException("Login 
-                  MikroTik gagal: " + s);
+                              throw new IOException(s);
                           }
                       }
                   }
