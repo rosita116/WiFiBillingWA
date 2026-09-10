@@ -235,6 +235,10 @@ jobs:
               root.addView(settings);
               settings.setOnClickListener(v -> showSettings());
 
+              Button billing = btn("💰 PENAGIHAN");
+              root.addView(billing);
+              billing.setOnClickListener(v -> showBilling());
+
               TextView note = title(
                   "Catatan:\n" +
                   "HP harus terhubung ke jaringan yang dapat mengakses IP MikroTik.\n" +
@@ -243,7 +247,123 @@ jobs:
               );
               root.addView(note);
           }
+                        void showBilling() {
+              base("Penagihan");
 
+              int count = prefs.getInt("count", 0);
+
+              if (count == 0) {
+                  root.addView(title("Belum ada data pelanggan.", 18));
+              }
+
+              for (int i = 0; i < count; i++) {
+                  String name = get("c_" + i + "_name", "");
+                  String wa = get("c_" + i + "_wa", "");
+                  String pack = get("c_" + i + "_pack", "");
+                  String amount = get("c_" + i + "_amount", "0");
+                  String due = get("c_" + i + "_due", "-");
+                  String paid = get("c_" + i + "_paid", "0");
+
+                  if (name.isEmpty()) continue;
+
+                  LinearLayout card = new LinearLayout(this);
+                  card.setOrientation(LinearLayout.VERTICAL);
+                  card.setPadding(16, 12, 16, 12);
+                  card.setBackgroundColor(0xffeeeeee);
+
+                  TextView info = title(
+                      "👤 " + name +
+                      "\n📦 Paket: " + pack +
+                      "\n💰 Tagihan: Rp " + amount +
+                      "\n📅 Jatuh tempo: " + due +
+                      "\nStatus: " +
+                      (paid.equals("1") ? "✅ LUNAS" : "🔴 BELUM BAYAR"),
+                      16
+                  );
+
+                  card.addView(info);
+
+                  if (paid.equals("0")) {
+                      Button tagih = btn("📲 TAGIH VIA WHATSAPP");
+                      card.addView(tagih);
+
+                      tagih.setOnClickListener(v -> {
+                          try {
+                              String nomor = wa.replaceAll("[^0-9]", "");
+
+                              if (nomor.startsWith("0")) {
+                                  nomor = "62" + nomor.substring(1);
+                              }
+
+                              String pesan =
+                                  "Halo " + name + ",\n\n" +
+                                  "Ini pengingat tagihan WiFi Anda.\n" +
+                                  "Paket: " + pack + "\n" +
+                                  "Tagihan: Rp " + amount + "\n" +
+                                  "Jatuh tempo: " + due + "\n\n" +
+                                  "Mohon melakukan pembayaran. Terima kasih.";
+
+                              String url =
+                                  "https://wa.me/" + nomor +
+                                  "?text=" +
+                                  java.net.URLEncoder.encode(
+                                      pesan,
+                                      "UTF-8"
+                                  );
+
+                              startActivity(
+                                  new Intent(
+                                      Intent.ACTION_VIEW,
+                                      android.net.Uri.parse(url)
+                                  )
+                              );
+
+                          } catch (Exception e) {
+                              Toast.makeText(
+                                  this,
+                                  "Gagal membuka WhatsApp",
+                                  Toast.LENGTH_SHORT
+                              ).show();
+                          }
+                      });
+
+                      Button lunas = btn("✅ TANDAI LUNAS");
+                      card.addView(lunas);
+
+                      final int index = i;
+
+                      lunas.setOnClickListener(v -> {
+                          prefs.edit()
+                              .putString(
+                                  "c_" + index + "_paid",
+                                  "1"
+                              )
+                              .apply();
+
+                          Toast.makeText(
+                              this,
+                              "Tagihan " + name + " sudah LUNAS",
+                              Toast.LENGTH_SHORT
+                          ).show();
+
+                          showBilling();
+                      });
+                  }
+
+                  LinearLayout.LayoutParams cp =
+                      new LinearLayout.LayoutParams(
+                          -1,
+                          -2
+                      );
+                  cp.setMargins(4, 6, 4, 6);
+
+                  root.addView(card, cp);
+              }
+
+              Button back = btn("← KEMBALI");
+              root.addView(back);
+              back.setOnClickListener(v -> showHome());
+          }
               void showSettings() {
                   base("Pengaturan MikroTik");
 
