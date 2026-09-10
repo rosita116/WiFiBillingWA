@@ -1,9 +1,9 @@
-name: Build WiFi Billing APK
+name: Build WiFi Billing APK v4 MikroTik
 
 on:
   workflow_dispatch:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   build:
@@ -12,10 +12,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Create Android project
+        shell: bash
         run: |
           mkdir -p app/src/main/java/com/wifibilling/wa
-          mkdir -p app/src/main/res/values
 
           cat > settings.gradle <<'EOF'
           pluginManagement {
@@ -55,14 +56,15 @@ jobs:
                   applicationId 'com.wifibilling.wa'
                   minSdk 23
                   targetSdk 34
-                  versionCode 1
-                  versionName '1.0'
+                  versionCode 4
+                  versionName '4.0'
               }
           }
           EOF
 
           cat > app/src/main/AndroidManifest.xml <<'EOF'
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.INTERNET" />
               <application
                   android:theme="@style/AppTheme"
                   android:label="WiFi Billing WA"
@@ -72,19 +74,21 @@ jobs:
                       android:screenOrientation="portrait"
                       android:exported="true">
                       <intent-filter>
-                          <action android:name="android.intent.action.MAIN"/>
-                          <category android:name="android.intent.category.LAUNCHER"/>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
                       </intent-filter>
                   </activity>
               </application>
           </manifest>
           EOF
 
+          mkdir -p app/src/main/res/values
           cat > app/src/main/res/values/styles.xml <<'EOF'
           <resources>
               <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
                   <item name="android:fontFamily">sans</item>
-                  <item name="android:colorAccent">#1565C0</item>
+                  <item name="android:colorAccent">#2196F3</item>
+                  <item name="android:navigationBarColor">#000000</item>
               </style>
           </resources>
           EOF
@@ -95,245 +99,435 @@ jobs:
           import android.app.*;
           import android.os.*;
           import android.content.*;
-          import android.net.*;
           import android.graphics.Color;
           import android.view.*;
           import android.widget.*;
-          import java.net.URLEncoder;
+          import java.io.*;
+          import java.net.*;
+          import java.nio.charset.StandardCharsets;
           import java.util.*;
 
           public class MainActivity extends Activity {
+              LinearLayout root, list;
+              android.content.SharedPreferences prefs;
+              Handler handler = new Handler(Looper.getMainLooper());
 
-              LinearLayout root, content;
-              ArrayList<String> customers = new ArrayList<>();
-              android.content.SharedPreferences pref;
+              String get(String k, String d) {
+                  return prefs.getString(k, d);
+              }
 
-              @Override
-              public void onCreate(Bundle b) {
+              @Override public void onCreate(Bundle b) {
                   super.onCreate(b);
-                  pref = getSharedPreferences("data", 0);
-                  load();
+                  prefs = getSharedPreferences("billing", MODE_PRIVATE);
                   showHome();
               }
 
-              TextView text(String s, int size) {
+              TextView title(String s, int size) {
                   TextView t = new TextView(this);
                   t.setText(s);
                   t.setTextSize(size);
                   t.setTextColor(Color.DKGRAY);
-                  t.setPadding(16,12,16,12);
+                  t.setPadding(20,20,20,20);
                   return t;
               }
 
               Button btn(String s) {
                   Button b = new Button(this);
                   b.setText(s);
-                  b.setAllCaps(false);
                   return b;
               }
 
-              void base(String title) {
+              void base(String heading) {
                   root = new LinearLayout(this);
                   root.setOrientation(LinearLayout.VERTICAL);
                   root.setPadding(16,16,16,16);
-
-                  TextView head = text(title, 24);
-                  head.setTextColor(Color.rgb(21,101,192));
-                  root.addView(head);
-
-                  content = new LinearLayout(this);
-                  content.setOrientation(LinearLayout.VERTICAL);
-
-                  ScrollView sv = new ScrollView(this);
-                  sv.addView(content);
-                  root.addView(sv, new LinearLayout.LayoutParams(-1,0,1));
-
+                  root.addView(title(heading, 26));
                   setContentView(root);
               }
 
               void showHome() {
                   base("WiFi Billing WA");
+                  TextView info = title(
+                      "Billing pelanggan WiFi\\n\\nMikroTik: " +
+                      (get("mt_ip","").isEmpty() ? "Belum dikonfigurasi" : get("mt_ip","")),
+                      18);
+                  root.addView(info);
 
-                  content.addView(text(
-                      "Aplikasi billing pelanggan WiFi\\n\\n" +
-                      "Jumlah pelanggan: " + customers.size(), 18));
+                  Button sync = btn("🔄 Sinkronisasi MikroTik");
+                  root.addView(sync);
+                  sync.setOnClickListener(v -> syncNow());
 
-                  Button add = btn("＋ Tambah Pelanggan");
-                  content.addView(add);
-                  add.setOnClickListener(v -> showForm());
+                  Button settings = btn("⚙ Pengaturan MikroTik");
+                  root.addView(settings);
+                  settings.setOnClickListener(v -> showSettings());
 
-                  Button list = btn("📋 Daftar Pelanggan");
-                  content.addView(list);
-                  list.setOnClickListener(v -> showList());
+                  Button customers = btn("👥 Daftar Pelanggan");
+                  root.addView(customers);
+                  customers.setOnClickListener(v -> showCustomers());
 
-                  content.addView(text(
-                      "\\nCatatan:\\n" +
-                      "Data disimpan lokal di HP.\\n" +
-                      "Pengiriman tagihan menggunakan WhatsApp.\\n" +
-                      "Integrasi MikroTik belum aktif pada versi ini.", 14));
+                  Button add = btn("➕ Tambah Pelanggan");
+                  root.addView(add);
+                  add.setOnClickListener(v -> addCustomer());
+
+                  TextView note = title(
+                      "Catatan: HP harus terhubung ke jaringan yang dapat mengakses IP MikroTik. " +
+                      "Jangan membuka port API 8728 ke Internet umum.",
+                      14);
+                  root.addView(note);
               }
 
-              EditText field(String hint) {
+              void showSettings() {
+                  base("Pengaturan MikroTik");
+
+                  EditText ip = field("IP MikroTik", get("mt_ip","10.20.20.1"));
+                  EditText port = field("Port API", get("mt_port","8728"));
+                  EditText user = field("Username API", get("mt_user","billingapi"));
+                  EditText pass = field("Password API", "");
+                  pass.setInputType(129);
+
+                  root.addView(ip); root.addView(port); root.addView(user); root.addView(pass);
+
+                  Button save = btn("💾 Simpan & Tes Koneksi");
+                  root.addView(save);
+                  save.setOnClickListener(v -> {
+                      prefs.edit()
+                          .putString("mt_ip", ip.getText().toString().trim())
+                          .putString("mt_port", port.getText().toString().trim())
+                          .putString("mt_user", user.getText().toString().trim())
+                          .apply();
+
+                      if (!pass.getText().toString().isEmpty())
+                          prefs.edit().putString("mt_pass", pass.getText().toString()).apply();
+
+                      new Thread(() -> {
+                          try {
+                              RouterApi api = new RouterApi(
+                                  ip.getText().toString().trim(),
+                                  Integer.parseInt(port.getText().toString().trim()),
+                                  user.getText().toString().trim(),
+                                  get("mt_pass",""));
+                              api.login();
+                              api.close();
+                              runOnUiThread(() -> toast("Koneksi MikroTik BERHASIL"));
+                          } catch(Exception e) {
+                              runOnUiThread(() -> toast("Gagal koneksi: " + e.getMessage()));
+                          }
+                      }).start();
+                  });
+
+                  Button sync = btn("🔄 Sinkronisasi Sekarang");
+                  root.addView(sync);
+                  sync.setOnClickListener(v -> syncNow());
+
+                  Button back = btn("← Kembali");
+                  root.addView(back);
+                  back.setOnClickListener(v -> showHome());
+              }
+
+              EditText field(String hint, String value) {
                   EditText e = new EditText(this);
                   e.setHint(hint);
-                  e.setSingleLine(true);
+                  e.setText(value);
+                  e.setTextSize(17);
+                  e.setPadding(12,12,12,12);
                   return e;
               }
 
-              void showForm() {
+              void addCustomer() {
                   base("Tambah Pelanggan");
-
-                  EditText name = field("Nama pelanggan");
-                  EditText phone = field("Nomor WhatsApp");
-                  EditText user = field("Username PPPoE");
-                  EditText pkg = field("Paket");
-                  EditText amount = field("Jumlah tagihan");
-                  EditText due = field("Tanggal jatuh tempo");
-
-                  content.addView(name);
-                  content.addView(phone);
-                  content.addView(user);
-                  content.addView(pkg);
-                  content.addView(amount);
-                  content.addView(due);
+                  EditText name = field("Nama pelanggan", "");
+                  EditText wa = field("WhatsApp", "");
+                  EditText ppp = field("Username PPPoE", "");
+                  EditText pack = field("Paket / Profile", "");
+                  EditText amount = field("Tagihan", "");
+                  EditText due = field("Jatuh tempo", "");
+                  root.addView(name);root.addView(wa);root.addView(ppp);
+                  root.addView(pack);root.addView(amount);root.addView(due);
 
                   Button save = btn("💾 Simpan");
-                  content.addView(save);
-
-                  Button back = btn("Kembali");
-                  content.addView(back);
-
+                  root.addView(save);
                   save.setOnClickListener(v -> {
                       String n=name.getText().toString().trim();
-                      if(n.length()==0) {
-                          Toast.makeText(this,"Nama pelanggan wajib diisi",Toast.LENGTH_SHORT).show();
-                          return;
-                      }
-
-                      String data =
-                          n + "|" +
-                          phone.getText().toString().trim() + "|" +
-                          user.getText().toString().trim() + "|" +
-                          pkg.getText().toString().trim() + "|" +
-                          amount.getText().toString().trim() + "|" +
-                          due.getText().toString().trim();
-
-                      customers.add(data);
-                      saveData();
-                      Toast.makeText(this,"Pelanggan disimpan",Toast.LENGTH_SHORT).show();
-                      showList();
+                      String u=ppp.getText().toString().trim();
+                      if(n.isEmpty() || u.isEmpty()) { toast("Nama dan username PPPoE wajib diisi"); return; }
+                      int count=prefs.getInt("count",0);
+                      prefs.edit()
+                          .putString("c_"+count+"_name",n)
+                          .putString("c_"+count+"_wa",wa.getText().toString().trim())
+                          .putString("c_"+count+"_ppp",u)
+                          .putString("c_"+count+"_pack",pack.getText().toString().trim())
+                          .putString("c_"+count+"_amount",amount.getText().toString().trim())
+                          .putString("c_"+count+"_due",due.getText().toString().trim())
+                          .putString("c_"+count+"_online","0")
+                          .putInt("count",count+1).apply();
+                      toast("Pelanggan disimpan");
+                      showCustomers();
                   });
-
-                  back.setOnClickListener(v -> showHome());
               }
 
-              void showList() {
+              void showCustomers() {
                   base("Daftar Pelanggan");
+                  list = new LinearLayout(this);
+                  list.setOrientation(LinearLayout.VERTICAL);
+                  ScrollView sv = new ScrollView(this);
+                  sv.addView(list);
+                  root.addView(sv, new LinearLayout.LayoutParams(-1,0,1));
 
-                  if(customers.size()==0) {
-                      content.addView(text("Belum ada pelanggan.",18));
+                  int count=prefs.getInt("count",0);
+                  if(count==0) list.addView(title("Belum ada pelanggan.",18));
+
+                  for(int i=0;i<count;i++) {
+                      String n=get("c_"+i+"_name","");
+                      String p=get("c_"+i+"_ppp","");
+                      String pack=get("c_"+i+"_pack","");
+                      String amount=get("c_"+i+"_amount","0");
+                      String due=get("c_"+i+"_due","-");
+                      String online=get("c_"+i+"_online","0");
+
+                      TextView t=title(
+                          n+"\\nPPPoE: "+p+"\\nPaket: "+pack+
+                          "\\nTagihan: "+amount+"\\nJatuh tempo: "+due+
+                          "\\nStatus: "+(online.equals("1") ? "ONLINE" : "OFFLINE"),
+                          17);
+                      t.setBackgroundColor(0xffeeeeee);
+                      LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);
+                      lp.setMargins(0,0,0,12);
+                      list.addView(t,lp);
                   }
 
-                  for(int i=0;i<customers.size();i++) {
-                      final int id=i;
-                      String[] x=customers.get(i).split("\\\\|",-1);
-
-                      LinearLayout card=new LinearLayout(this);
-                      card.setOrientation(LinearLayout.VERTICAL);
-
-                      String info =               
-                              x[0] +
-                              "\nPaket: " + x[3] +
-                              "\nTagihan: Rp " + x[4] +
-                              "\nJatuh tempo: " + x[5];
-
-                      card.addView(text(info,17));
-
-                      Button wa=btn("📱 Kirim Tagihan WhatsApp");
-                      card.addView(wa);
-                      wa.setOnClickListener(v -> sendWA(x));
-
-                      Button del=btn("Hapus");
-                      card.addView(del);
-                      del.setOnClickListener(v -> {
-                          customers.remove(id);
-                          saveData();
-                          showList();
-                      });
-
-                      content.addView(card);
-                      content.addView(text("────────────────",12));
-                  }
-
-                  Button back=btn("Kembali");
-                  content.addView(back);
+                  Button back=btn("← Kembali");
+                  root.addView(back);
                   back.setOnClickListener(v -> showHome());
               }
 
-              void sendWA(String[] x) {
-                  try {
-                      String phone=x[1].replaceAll("[^0-9]","");
-                      if(phone.startsWith("0")) phone="62"+phone.substring(1);
+              void syncNow() {
+                  final String ip=get("mt_ip","");
+                  if(ip.isEmpty()) { toast("Isi Pengaturan MikroTik dulu"); return; }
 
-                      String msg =
-                              "TAGIHAN INTERNET WIFI\n\n" +
-                              "Pelanggan: " + x[0] + "\n" +
-                              "Paket: " + x[3] + "\n" +
-                              "Tagihan: Rp " + x[4] + "\n" +
-                              "Jatuh tempo: " + x[5] + "\n\n" +
-                              "Mohon melakukan pembayaran tepat waktu. Terima kasih.";
-                      String url="https://wa.me/"+phone+
-                          "?text="+URLEncoder.encode(msg,"UTF-8");
+                  toast("Sinkronisasi dimulai...");
+                  new Thread(() -> {
+                      try {
+                          RouterApi api=new RouterApi(ip,Integer.parseInt(get("mt_port","8728")),
+                              get("mt_user",""),get("mt_pass",""));
+                          api.login();
+                          List<Map<String,String>> secrets=api.print("/ppp/secret/print");
+                          List<Map<String,String>> active=api.print("/ppp/active/print");
+                          api.close();
 
-                      startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(url)));
-                  } catch(Exception e) {
-                      Toast.makeText(this,"WhatsApp tidak dapat dibuka",Toast.LENGTH_SHORT).show();
+                          HashSet<String> online=new HashSet<>();
+                          for(Map<String,String> a:active) {
+                              String n=a.get("name");
+                              if(n!=null) online.add(n);
+                          }
+
+                          int added=0, updated=0;
+                          for(Map<String,String> s:secrets) {
+                              String name=s.get("name");
+                              if(name==null || name.isEmpty()) continue;
+                              String profile=s.get("profile");
+                              int idx=findCustomer(name);
+                              if(idx<0) {
+                                  idx=prefs.getInt("count",0);
+                                  prefs.edit()
+                                      .putString("c_"+idx+"_name",name)
+                                      .putString("c_"+idx+"_wa","")
+                                      .putString("c_"+idx+"_ppp",name)
+                                      .putString("c_"+idx+"_pack",profile==null?"":profile)
+                                      .putString("c_"+idx+"_amount","0")
+                                      .putString("c_"+idx+"_due","-")
+                                      .putString("c_"+idx+"_online",online.contains(name)?"1":"0")
+                                      .putInt("count",idx+1).apply();
+                                  added++;
+                              } else {
+                                  prefs.edit()
+                                      .putString("c_"+idx+"_pack",profile==null?"":profile)
+                                      .putString("c_"+idx+"_online",online.contains(name)?"1":"0")
+                                      .apply();
+                                  updated++;
+                              }
+                          }
+
+                          final int a=added,b=updated;
+                          runOnUiThread(() -> {
+                              toast("Sinkronisasi selesai. Baru: "+a+" | Update: "+b);
+                              showCustomers();
+                          });
+                      } catch(Exception e) {
+                          runOnUiThread(() -> toast("Sinkronisasi gagal: "+e.getMessage()));
+                      }
+                  }).start();
+              }
+
+              int findCustomer(String ppp) {
+                  int c=prefs.getInt("count",0);
+                  for(int i=0;i<c;i++)
+                      if(ppp.equals(get("c_"+i+"_ppp",""))) return i;
+                  return -1;
+              }
+
+              void toast(String s) {
+                  Toast.makeText(this,s,Toast.LENGTH_LONG).show();
+              }
+
+              @Override protected void onResume() {
+                  super.onResume();
+                  if(!get("mt_ip","").isEmpty()) {
+                      handler.postDelayed(new Runnable() {
+                          public void run() {
+                              syncNow();
+                              handler.postDelayed(this,900000);
+                          }
+                      },900000);
                   }
               }
 
-              void saveData() {
-                  StringBuilder s=new StringBuilder();
-                  for(String x:customers) {
-                      if(s.length()>0)s.append("\\n");
-                      s.append(x);
-                  }
-                  pref.edit().putString("customers",s.toString()).apply();
-              }
+              static class RouterApi {
+                  Socket socket;
+                  InputStream in; OutputStream out;
+                  String host,user,pass; int port;
 
-              void load() {
-                  String s=pref.getString("customers","");
-                  if(!s.isEmpty()) {
-                      String[] a=s.split("\\\\n",-1);
-                      for(String x:a) if(!x.isEmpty()) customers.add(x);
+                  RouterApi(String h,int p,String u,String pw) {
+                      host=h;port=p;user=u;pass=pw;
+                  }
+
+                  void connect() throws Exception {
+                      socket=new Socket();
+                      socket.connect(new InetSocketAddress(host,port),5000);
+                      socket.setSoTimeout(10000);
+                      in=socket.getInputStream(); out=socket.getOutputStream();
+                  }
+
+                  void login() throws Exception {
+                      connect();
+                      writeSentence("/login", new String[0]);
+                      ArrayList<String> r=readSentence();
+                      boolean old=false; String ret=null;
+                      for(String s:r) {
+                          if(s.startsWith("!trap")) throw new IOException(s);
+                          if(s.startsWith("=ret=")) { old=true; ret=s.substring(5); }
+                      }
+                      if(old && ret!=null) {
+                          byte[] md=md5HexBytes("00"+pass+ret);
+                          writeSentence("/login", new String[]{"=name="+user,"=response=00"+bytesHex(md)});
+                      } else {
+                          writeSentence("/login", new String[]{"=name="+user,"=password="+pass});
+                      }
+                      ArrayList<String> x=readSentence();
+                      for(String s:x) if(s.startsWith("!trap")) throw new IOException(s);
+                  }
+
+                  List<Map<String,String>> print(String cmd) throws Exception {
+                      writeSentence(cmd,new String[0]);
+                      List<Map<String,String>> rows=new ArrayList<>();
+                      ArrayList<String> sentence;
+                      while(true) {
+                          sentence=readSentence();
+                          if(sentence.size()==0) continue;
+                          String type=sentence.get(0);
+                          if(type.equals("!done")) break;
+                          if(type.equals("!re")) {
+                              Map<String,String> m=new HashMap<>();
+                              for(String s:sentence) {
+                                  if(s.startsWith("=")) {
+                                      int q=s.indexOf('=',1);
+                                      if(q>0) m.put(s.substring(1,q),s.substring(q+1));
+                                  }
+                              }
+                              rows.add(m);
+                          } else if(type.equals("!trap")) {
+                              throw new IOException(sentence.toString());
+                          }
+                      }
+                      return rows;
+                  }
+
+                  void writeSentence(String cmd,String[] args) throws Exception {
+                      writeWord(cmd);
+                      for(String a:args) writeWord(a);
+                      out.write(0); out.flush();
+                  }
+
+                  ArrayList<String> readSentence() throws Exception {
+                      ArrayList<String> s=new ArrayList<>();
+                      while(true) {
+                          String w=readWord();
+                          if(w.length()==0) break;
+                          s.add(w);
+                      }
+                      return s;
+                  }
+
+                  void writeWord(String s) throws Exception {
+                      byte[] b=s.getBytes(StandardCharsets.UTF_8);
+                      writeLen(b.length); out.write(b);
+                  }
+
+                  String readWord() throws Exception {
+                      int len=readLen();
+                      if(len==0) return "";
+                      byte[] b=new byte[len];
+                      int off=0;
+                      while(off<len) {
+                          int n=in.read(b,off,len-off);
+                          if(n<0) throw new EOFException();
+                          off+=n;
+                      }
+                      return new String(b,StandardCharsets.UTF_8);
+                  }
+
+                  void writeLen(int n) throws Exception {
+                      if(n<0x80) out.write(n);
+                      else if(n<0x4000) { out.write((n>>8)|0x80); out.write(n&255); }
+                      else if(n<0x200000) { out.write((n>>16)|0xC0); out.write((n>>8)&255); out.write(n&255); }
+                      else if(n<0x10000000) { out.write((n>>24)|0xE0); out.write((n>>16)&255); out.write((n>>8)&255); out.write(n&255); }
+                      else { out.write(0xF0); out.write((n>>24)&255); out.write((n>>16)&255); out.write((n>>8)&255); out.write(n&255); }
+                  }
+
+                  int readLen() throws Exception {
+                      int c=in.read();
+                      if(c<0) throw new EOFException();
+                      if((c&0x80)==0) return c;
+                      if((c&0xC0)==0x80) return ((c&0x3F)<<8)|(in.read()&255);
+                      if((c&0xE0)==0xC0) return ((c&0x1F)<<16)|((in.read()&255)<<8)|(in.read()&255);
+                      if((c&0xF0)==0xE0) return ((c&0x0F)<<24)|((in.read()&255)<<16)|((in.read()&255)<<8)|(in.read()&255);
+                      if(c==0xF0) return (in.read()&255)<<24|(in.read()&255)<<16|(in.read()&255)<<8|(in.read()&255);
+                      throw new IOException("Invalid API length");
+                  }
+
+                  void close() {
+                      try { if(socket!=null) socket.close(); } catch(Exception ignored) {}
+                  }
+
+                  static byte[] md5HexBytes(String s) throws Exception {
+                      java.security.MessageDigest md=java.security.MessageDigest.getInstance("MD5");
+                      return md.digest(s.getBytes(StandardCharsets.UTF_8));
+                  }
+
+                  static String bytesHex(byte[] b) {
+                      StringBuilder x=new StringBuilder();
+                      for(byte v:b) x.append(String.format("%02x",v&255));
+                      return x.toString();
                   }
               }
           }
-          
+          EOF
 
-      - name: Set up JDK 17
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK
-        run: |
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platforms;android-34" "build-tools;34.0.0"
-
-      - name: Set up Gradle
+      - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
 
       - name: Build APK
-        run: gradle --no-daemon assembleDebug
+        run: gradle :app:assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: WiFiBillingWA-debug
+          name: WiFiBillingWA-v4-MikroTik-debug
           path: app/build/outputs/apk/debug/app-debug.apk
