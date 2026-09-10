@@ -155,7 +155,7 @@ jobs:
               );
               root.addView(welcome);
 
-              int count = Integer.parseInt(get("count", "0"));
+              int count = prefs.getInt("count", 0);
               int onlineCount = 0;
 
               for (int i = 0; i < count; i++) {
