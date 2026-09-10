@@ -1,0 +1,341 @@
+name: Build WiFi Billing APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create Android project
+        run: |
+          mkdir -p app/src/main/java/com/wifibilling/wa
+          mkdir -p app/src/main/res/values
+
+          cat > settings.gradle <<'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = "WiFiBillingWA"
+          include(":app")
+          EOF
+
+          cat > build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '8.5.2' apply false
+          }
+          EOF
+
+          cat > app/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application'
+          }
+
+          android {
+              namespace 'com.wifibilling.wa'
+              compileSdk 34
+
+              defaultConfig {
+                  applicationId 'com.wifibilling.wa'
+                  minSdk 23
+                  targetSdk 34
+                  versionCode 1
+                  versionName '1.0'
+              }
+          }
+          EOF
+
+          cat > app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application
+                  android:theme="@style/AppTheme"
+                  android:label="WiFi Billing WA"
+                  android:allowBackup="true">
+                  <activity
+                      android:name=".MainActivity"
+                      android:screenOrientation="portrait"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          cat > app/src/main/res/values/styles.xml <<'EOF'
+          <resources>
+              <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+                  <item name="android:fontFamily">sans</item>
+                  <item name="android:colorAccent">#1565C0</item>
+              </style>
+          </resources>
+          EOF
+
+          cat > app/src/main/java/com/wifibilling/wa/MainActivity.java <<'EOF'
+          package com.wifibilling.wa;
+
+          import android.app.*;
+          import android.os.*;
+          import android.content.*;
+          import android.net.*;
+          import android.graphics.Color;
+          import android.view.*;
+          import android.widget.*;
+          import java.net.URLEncoder;
+          import java.util.*;
+
+          public class MainActivity extends Activity {
+
+              LinearLayout root, content;
+              ArrayList<String> customers = new ArrayList<>();
+              android.content.SharedPreferences pref;
+
+              @Override
+              public void onCreate(Bundle b) {
+                  super.onCreate(b);
+                  pref = getSharedPreferences("data", 0);
+                  load();
+                  showHome();
+              }
+
+              TextView text(String s, int size) {
+                  TextView t = new TextView(this);
+                  t.setText(s);
+                  t.setTextSize(size);
+                  t.setTextColor(Color.DKGRAY);
+                  t.setPadding(16,12,16,12);
+                  return t;
+              }
+
+              Button btn(String s) {
+                  Button b = new Button(this);
+                  b.setText(s);
+                  b.setAllCaps(false);
+                  return b;
+              }
+
+              void base(String title) {
+                  root = new LinearLayout(this);
+                  root.setOrientation(LinearLayout.VERTICAL);
+                  root.setPadding(16,16,16,16);
+
+                  TextView head = text(title, 24);
+                  head.setTextColor(Color.rgb(21,101,192));
+                  root.addView(head);
+
+                  content = new LinearLayout(this);
+                  content.setOrientation(LinearLayout.VERTICAL);
+
+                  ScrollView sv = new ScrollView(this);
+                  sv.addView(content);
+                  root.addView(sv, new LinearLayout.LayoutParams(-1,0,1));
+
+                  setContentView(root);
+              }
+
+              void showHome() {
+                  base("WiFi Billing WA");
+
+                  content.addView(text(
+                      "Aplikasi billing pelanggan WiFi\\n\\n" +
+                      "Jumlah pelanggan: " + customers.size(), 18));
+
+                  Button add = btn("＋ Tambah Pelanggan");
+                  content.addView(add);
+                  add.setOnClickListener(v -> showForm());
+
+                  Button list = btn("📋 Daftar Pelanggan");
+                  content.addView(list);
+                  list.setOnClickListener(v -> showList());
+
+                  content.addView(text(
+                      "\\nCatatan:\\n" +
+                      "Data disimpan lokal di HP.\\n" +
+                      "Pengiriman tagihan menggunakan WhatsApp.\\n" +
+                      "Integrasi MikroTik belum aktif pada versi ini.", 14));
+              }
+
+              EditText field(String hint) {
+                  EditText e = new EditText(this);
+                  e.setHint(hint);
+                  e.setSingleLine(true);
+                  return e;
+              }
+
+              void showForm() {
+                  base("Tambah Pelanggan");
+
+                  EditText name = field("Nama pelanggan");
+                  EditText phone = field("Nomor WhatsApp");
+                  EditText user = field("Username PPPoE");
+                  EditText pkg = field("Paket");
+                  EditText amount = field("Jumlah tagihan");
+                  EditText due = field("Tanggal jatuh tempo");
+
+                  content.addView(name);
+                  content.addView(phone);
+                  content.addView(user);
+                  content.addView(pkg);
+                  content.addView(amount);
+                  content.addView(due);
+
+                  Button save = btn("💾 Simpan");
+                  content.addView(save);
+
+                  Button back = btn("Kembali");
+                  content.addView(back);
+
+                  save.setOnClickListener(v -> {
+                      String n=name.getText().toString().trim();
+                      if(n.length()==0) {
+                          Toast.makeText(this,"Nama pelanggan wajib diisi",Toast.LENGTH_SHORT).show();
+                          return;
+                      }
+
+                      String data =
+                          n + "|" +
+                          phone.getText().toString().trim() + "|" +
+                          user.getText().toString().trim() + "|" +
+                          pkg.getText().toString().trim() + "|" +
+                          amount.getText().toString().trim() + "|" +
+                          due.getText().toString().trim();
+
+                      customers.add(data);
+                      saveData();
+                      Toast.makeText(this,"Pelanggan disimpan",Toast.LENGTH_SHORT).show();
+                      showList();
+                  });
+
+                  back.setOnClickListener(v -> showHome());
+              }
+
+              void showList() {
+                  base("Daftar Pelanggan");
+
+                  if(customers.size()==0) {
+                      content.addView(text("Belum ada pelanggan.",18));
+                  }
+
+                  for(int i=0;i<customers.size();i++) {
+                      final int id=i;
+                      String[] x=customers.get(i).split("\\\\|",-1);
+
+                      LinearLayout card=new LinearLayout(this);
+                      card.setOrientation(LinearLayout.VERTICAL);
+
+                      String info =
+                          x[0] +
+                          "\\nPaket: " + x[3] +
+                          "\\nTagihan: Rp " + x[4] +
+                          "\\nJatuh tempo: " + x[5];
+
+                      card.addView(text(info,17));
+
+                      Button wa=btn("📱 Kirim Tagihan WhatsApp");
+                      card.addView(wa);
+                      wa.setOnClickListener(v -> sendWA(x));
+
+                      Button del=btn("Hapus");
+                      card.addView(del);
+                      del.setOnClickListener(v -> {
+                          customers.remove(id);
+                          saveData();
+                          showList();
+                      });
+
+                      content.addView(card);
+                      content.addView(text("────────────────",12));
+                  }
+
+                  Button back=btn("Kembali");
+                  content.addView(back);
+                  back.setOnClickListener(v -> showHome());
+              }
+
+              void sendWA(String[] x) {
+                  try {
+                      String phone=x[1].replaceAll("[^0-9]","");
+                      if(phone.startsWith("0")) phone="62"+phone.substring(1);
+
+                      String msg =
+                          "TAGIHAN INTERNET WIFI\\n\\n" +
+                          "Pelanggan: " + x[0] + "\\n" +
+                          "Paket: " + x[3] + "\\n" +
+                          "Tagihan: Rp " + x[4] + "\\n" +
+                          "Jatuh tempo: " + x[5] + "\\n\\n" +
+                          "Mohon melakukan pembayaran tepat waktu. Terima kasih.";
+
+                      String url="https://wa.me/"+phone+
+                          "?text="+URLEncoder.encode(msg,"UTF-8");
+
+                      startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(url)));
+                  } catch(Exception e) {
+                      Toast.makeText(this,"WhatsApp tidak dapat dibuka",Toast.LENGTH_SHORT).show();
+                  }
+              }
+
+              void saveData() {
+                  StringBuilder s=new StringBuilder();
+                  for(String x:customers) {
+                      if(s.length()>0)s.append("\\n");
+                      s.append(x);
+                  }
+                  pref.edit().putString("customers",s.toString()).apply();
+              }
+
+              void load() {
+                  String s=pref.getString("customers","");
+                  if(!s.isEmpty()) {
+                      String[] a=s.split("\\\\n",-1);
+                      for(String x:a) if(!x.isEmpty()) customers.add(x);
+                  }
+              }
+          }
+          EOF
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Build APK
+        run: gradle --no-daemon assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: WiFiBillingWA-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
