@@ -399,21 +399,21 @@ jobs:
 
                   void login() throws Exception {
                       connect();
-                      writeSentence("/login", new String[0]);
-                      ArrayList<String> r=readSentence();
-                      boolean old=false; String ret=null;
-                      for(String s:r) {
-                          if(s.startsWith("!trap")) throw new IOException(s);
-                          if(s.startsWith("=ret=")) { old=true; ret=s.substring(5); }
+
+                      writeSentence("/login", new String[]{
+                          "=name=" + user,
+                          "=password=" + pass
+                      });
+
+                      ArrayList<String> response = 
+                  readSentence();
+
+                      for (String s : response) {
+                          if (s.startsWith("!trap")) {
+                              throw new IOException("Login 
+                  MikroTik gagal: " + s);
+                          }
                       }
-                      if(old && ret!=null) {
-                          byte[] md=md5HexBytes("00"+pass+ret);
-                          writeSentence("/login", new String[]{"=name="+user,"=response=00"+bytesHex(md)});
-                      } else {
-                          writeSentence("/login", new String[]{"=name="+user,"=password="+pass});
-                      }
-                      ArrayList<String> x=readSentence();
-                      for(String s:x) if(s.startsWith("!trap")) throw new IOException(s);
                   }
 
                   List<Map<String,String>> print(String cmd) throws Exception {
