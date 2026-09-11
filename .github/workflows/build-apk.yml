@@ -1488,13 +1488,21 @@ jobs:
                           }
 
                           String message =
-                              "Halo " + name + ",\n\n" +
-                              "Tagihan WiFi Anda:\n" +
-                              "PPPoE: " + ppp + "\n" +
-                              "Tagihan: Rp " + amount + "\n" +
-                              "Jatuh tempo: " + due + "\n\n" +
-                              "Mohon melakukan pembayaran. Terima kasih.";
-
+                              "Assalamu'alaikum " + name + ",\n\n" 
+                          +
+                              "Kami dari NN-NET menginformasikan 
+                          bahwa tagihan WiFi Anda telah jatuh 
+                          tempo.\n\n" +
+                              "👤 Pelanggan: " + name + "\n" +
+                              "🌐 PPPoE: " + ppp + "\n" +
+                              "💰 Tagihan: Rp " + amount + "\n" +
+                              "📅 Jatuh tempo: " + due + "\n\n" +
+                              "Mohon segera melakukan pembayaran 
+                          agar layanan WiFi tetap aktif.\n\n" +
+                              "Terima kasih atas kepercayaan Anda 
+                          menggunakan layanan NN-NET.\n\n" +
+                              "NN-NET\n" +
+                              "WiFi Billing";
                           try {
                               Intent intent = new Intent(
                                   Intent.ACTION_VIEW,
