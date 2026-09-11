@@ -1,4 +1,4 @@
-name: Build WiFi Billing APK v6 UI MikroTik
+name: Build NN-Net WiFi Billing APK v8 Isolir
 
 on:
   workflow_dispatch:
@@ -61,8 +61,8 @@ jobs:
                   applicationId 'com.wifibilling.wa'
                   minSdk 23
                   targetSdk 34
-                  versionCode 6
-                  versionName '6.0'
+                  versionCode 8
+                  versionName '8.0'
               }
           }
           EOF
@@ -73,7 +73,7 @@ jobs:
 
               <application
                   android:theme="@style/AppTheme"
-                  android:label="WiFi Billing WA"
+                  android:label="NN-Net WiFi Billing"
                   android:allowBackup="true">
 
                   <activity
@@ -171,62 +171,68 @@ jobs:
               void showHome() {
                   root = new LinearLayout(this);
                   root.setOrientation(LinearLayout.VERTICAL);
-                  root.setBackgroundColor(0xfff5f2fb);
+                  root.setBackgroundColor(0xfff6f3fc);
 
                   LinearLayout content = new LinearLayout(this);
                   content.setOrientation(LinearLayout.VERTICAL);
+                  content.setPadding(12, 0, 12, 18);
 
                   ScrollView sv = new ScrollView(this);
+                  sv.setFillViewport(true);
                   sv.addView(content);
                   root.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1));
 
+                  // HERO
                   LinearLayout hero = new LinearLayout(this);
                   hero.setOrientation(LinearLayout.VERTICAL);
-                  hero.setPadding(20, 20, 20, 20);
-                  hero.setBackground(new GradientDrawable(
+                  hero.setPadding(18, 18, 18, 18);
+                  GradientDrawable heroBg = new GradientDrawable(
                       GradientDrawable.Orientation.TL_BR,
-                      new int[]{0xff4321a8, 0xff8050e8}
-                  ));
-                  ((GradientDrawable) hero.getBackground()).setCornerRadius(30);
+                      new int[]{0xff4520b5, 0xff8650eb}
+                  );
+                  heroBg.setCornerRadius(28);
+                  hero.setBackground(heroBg);
 
                   LinearLayout top = new LinearLayout(this);
                   top.setGravity(Gravity.CENTER_VERTICAL);
 
-                  TextView logo = ui6Text("P", 27, 0xff5b2dcc, true);
+                  TextView logo = ui7Text("NN", 18, 0xff5b2dcc, true);
                   logo.setGravity(Gravity.CENTER);
-                  logo.setBackground(ui6Bg(Color.WHITE, 20));
+                  logo.setBackground(ui7Bg(Color.WHITE, 18));
                   top.addView(logo, new LinearLayout.LayoutParams(54, 54));
 
                   LinearLayout brand = new LinearLayout(this);
                   brand.setOrientation(LinearLayout.VERTICAL);
-                  brand.setPadding(12, 0, 0, 0);
-                  brand.addView(ui6Text("WiFi Billing", 25, Color.WHITE, true));
-                  brand.addView(ui6Text("Kelola Pelanggan WiFi Lebih Mudah", 12, 0xffe9e0ff, false));
+                  brand.setPadding(12, 0, 8, 0);
+                  brand.addView(ui7Text("NN-NET", 22, Color.WHITE, true));
+                  brand.addView(ui7Text("WiFi Billing", 16, Color.WHITE, true));
+                  brand.addView(ui7Text("Kelola Pelanggan WiFi Lebih Mudah", 12, 0xffeee8ff, false));
                   top.addView(brand, new LinearLayout.LayoutParams(0, -2, 1));
 
-                  TextView bell = ui6Text("♧", 25, Color.WHITE, false);
+                  TextView bell = ui7Text("●", 18, Color.WHITE, true);
                   bell.setGravity(Gravity.CENTER);
-                  top.addView(bell, new LinearLayout.LayoutParams(44, 54));
+                  top.addView(bell, new LinearLayout.LayoutParams(42, 54));
                   hero.addView(top);
 
-                  TextView mt = ui6Text(
+                  TextView mt = ui7Text(
                       get("mt_ip", "").isEmpty()
-                          ? "● MikroTik belum dikonfigurasi"
-                          : "● MikroTik  " + get("mt_ip", ""),
-                      12, 0xffeee8ff, false
+                          ? "●  MikroTik belum dikonfigurasi"
+                          : "●  MikroTik   " + get("mt_ip", ""),
+                      13, 0xfff2edff, false
                   );
-                  mt.setPadding(66, 8, 0, 0);
+                  mt.setPadding(66, 10, 0, 0);
                   hero.addView(mt);
                   content.addView(hero);
 
-                  ui6AddGap(content, 12);
+                  ui7Gap(content, 12);
 
                   int count = prefs.getInt("count", 0);
-                  int online = 0, paid = 0;
+                  int online = 0, paid = 0, offline = 0;
                   long total = 0;
 
                   for (int i = 0; i < count; i++) {
                       if ("1".equals(get("c_" + i + "_online", "0"))) online++;
+                      else offline++;
                       if ("1".equals(get("c_" + i + "_paid", "0"))) paid++;
                       try {
                           total += Long.parseLong(
@@ -235,97 +241,233 @@ jobs:
                       } catch (Exception ignored) {}
                   }
 
-                  LinearLayout stats = new LinearLayout(this);
-                  ui6Stat(stats, "♙", "Total", String.valueOf(count));
-                  ui6Stat(stats, "●", "Online", String.valueOf(online));
-                  ui6Stat(stats, "✓", "Lunas", String.valueOf(paid));
-                  content.addView(stats);
+                  // STATS: 2 x 2 so nothing is squeezed or clipped on narrow phones.
+                  LinearLayout statsRow1 = new LinearLayout(this);
+                  statsRow1.setOrientation(LinearLayout.HORIZONTAL);
+                  ui7Stat(statsRow1, "♙", "Total Pelanggan", String.valueOf(count), 0xfff1ebff);
+                  ui7Stat(statsRow1, "●", "Online", String.valueOf(online), 0xffe9f9f1);
+                  content.addView(statsRow1);
 
-                  ui6AddGap(content, 10);
+                  ui7Gap(content, 8);
 
-                  LinearLayout bill = ui6Card();
-                  LinearLayout bt = new LinearLayout(this);
-                  bt.setGravity(Gravity.CENTER_VERTICAL);
-                  bt.addView(ui6Text("Tagihan Bulan Ini", 15, 0xff2f2459, true),
-                      new LinearLayout.LayoutParams(0, -2, 1));
-                  TextView sum = ui6Text("Rp " + ui6Money(total), 13, Color.WHITE, true);
-                  sum.setGravity(Gravity.CENTER);
-                  sum.setPadding(13, 8, 13, 8);
-                  sum.setBackground(ui6Bg(0xff5b2dcc, 25));
-                  bt.addView(sum);
-                  bill.addView(bt);
-                  bill.addView(ui6Text(
+                  LinearLayout statsRow2 = new LinearLayout(this);
+                  statsRow2.setOrientation(LinearLayout.HORIZONTAL);
+                  ui7Stat(statsRow2, "○", "Offline", String.valueOf(offline), 0xffedf1ff);
+                  ui7Stat(statsRow2, "✓", "Lunas", String.valueOf(paid), 0xfffff2df);
+                  content.addView(statsRow2);
+
+                  ui7Gap(content, 12);
+
+                  // BILLING SUMMARY
+                  LinearLayout bill = ui7Card();
+                  bill.setPadding(16, 16, 16, 16);
+
+                  LinearLayout billTop = new LinearLayout(this);
+                  billTop.setGravity(Gravity.CENTER_VERTICAL);
+
+                  TextView billIcon = ui7Text("Rp", 14, Color.WHITE, true);
+                  billIcon.setGravity(Gravity.CENTER);
+                  billIcon.setBackground(ui7Bg(0xff6b3ddd, 18));
+                  billTop.addView(billIcon, new LinearLayout.LayoutParams(46, 46));
+
+                  LinearLayout billText = new LinearLayout(this);
+                  billText.setOrientation(LinearLayout.VERTICAL);
+                  billText.setPadding(12, 0, 8, 0);
+                  billText.addView(ui7Text("Tagihan Bulan Ini", 17, 0xff24204b, true));
+                  billText.addView(ui7Text(
                       Math.max(0, count - paid) + " pelanggan belum membayar",
-                      11, 0xff77738c, false
+                      12, 0xff77738c, false
                   ));
+                  billTop.addView(billText, new LinearLayout.LayoutParams(0, -2, 1));
+
+                  TextView sum = ui7Text("Rp " + ui6Money(total), 13, Color.WHITE, true);
+                  sum.setGravity(Gravity.CENTER);
+                  sum.setPadding(13, 9, 13, 9);
+                  sum.setBackground(ui7Bg(0xff5b2dcc, 22));
+                  billTop.addView(sum);
+
+                  bill.addView(billTop);
                   content.addView(bill);
 
-                  TextView menuTitle = ui6Text("Menu Utama", 17, 0xff2f2459, true);
-                  menuTitle.setPadding(3, 17, 3, 7);
+                  // MENU UTAMA — 3 x 2, lebih lega seperti desain NN-NET
+                  TextView menuTitle = ui7Text("Menu Utama", 20, 0xff24204b, true);
+                  menuTitle.setPadding(2, 18, 2, 10);
                   content.addView(menuTitle);
 
-                  LinearLayout r1 = new LinearLayout(this);
-                  ui6Menu(r1, "♙", "Pelanggan", v -> showCustomers());
-                  ui6Menu(r1, "▣", "Penagihan", v -> showBilling());
-                  ui6Menu(r1, "⌁", "MikroTik", v -> showSettings());
-                  ui6Menu(r1, "⚙", "Pengaturan", v -> showSettings());
-                  content.addView(r1);
+                  LinearLayout menu1 = new LinearLayout(this);
+                  menu1.setOrientation(LinearLayout.HORIZONTAL);
+                  ui7Menu(menu1, "♙", "Pelanggan", "Kelola pelanggan",
+                      v -> showCustomers(), 0xffeee8ff);
+                  ui7Menu(menu1, "▣", "Penagihan", "Proses tagihan",
+                      v -> showBilling(), 0xffeaf1ff);
+                  ui7Menu(menu1, "⌁", "MikroTik", "Kelola router",
+                      v -> showSettings(), 0xffe8f8f5);
+                  content.addView(menu1);
 
-                  LinearLayout recent = ui6Card();
+                  ui7Gap(content, 8);
+
+                  LinearLayout menu2 = new LinearLayout(this);
+                  menu2.setOrientation(LinearLayout.HORIZONTAL);
+                  ui7Menu(menu2, "⚙", "Pengaturan", "Atur aplikasi",
+                      v -> showSettings(), 0xffffedf2);
+                  ui7Menu(menu2, "🔒", "Isolir", "Blokir / Unblock",
+                      v -> showIsolir(), 0xffffefd9);
+                  ui7Menu(menu2, "+", "Tambah", "Pelanggan baru",
+                      v -> addCustomer(), 0xffeee8ff);
+                  content.addView(menu2);
+
+                  // RECENT BILLING
+                  LinearLayout recent = ui7Card();
+                  recent.setPadding(16, 16, 16, 12);
+
                   LinearLayout rt = new LinearLayout(this);
-                  rt.addView(ui6Text("Tagihan Terbaru", 16, 0xff2f2459, true),
+                  rt.setGravity(Gravity.CENTER_VERTICAL);
+                  rt.addView(ui7Text("Tagihan Terbaru", 18, 0xff24204b, true),
                       new LinearLayout.LayoutParams(0, -2, 1));
-                  TextView all = ui6Text("Lihat Semua", 11, 0xff5b2dcc, true);
+                  TextView all = ui7Text("Lihat Semua  ›", 12, 0xff5b2dcc, true);
+                  all.setGravity(Gravity.CENTER);
+                  all.setPadding(10, 7, 10, 7);
+                  all.setBackground(ui7Bg(0xfff0ebff, 18));
                   all.setOnClickListener(v -> showBilling());
                   rt.addView(all);
                   recent.addView(rt);
 
                   int shown = 0;
-                  for (int i = 0; i < count && shown < 3; i++) {
+                  for (int i = 0; i < count && shown < 4; i++) {
                       String n = get("c_" + i + "_name", "");
                       if (n.isEmpty()) continue;
+
                       String amount = get("c_" + i + "_amount", "0");
                       String due = get("c_" + i + "_due", "-");
-                      String paidText = "1".equals(get("c_" + i + "_paid", "0")) ? "Lunas" : "Belum Bayar";
+                      boolean isPaid = "1".equals(get("c_" + i + "_paid", "0"));
+                      String paidText = isPaid ? "Lunas" : "Belum Bayar";
 
                       LinearLayout rr = new LinearLayout(this);
                       rr.setGravity(Gravity.CENTER_VERTICAL);
-                      rr.setPadding(0, 10, 0, 10);
+                      rr.setPadding(0, 12, 0, 12);
 
-                      TextView av = ui6Text("♙", 20, 0xff5b2dcc, false);
+                      TextView av = ui7Text("♙", 19, 0xff5b2dcc, false);
                       av.setGravity(Gravity.CENTER);
-                      av.setBackground(ui6Bg(0xffeee8ff, 30));
-                      rr.addView(av, new LinearLayout.LayoutParams(42, 42));
+                      av.setBackground(ui7Bg(0xffeee8ff, 24));
+                      rr.addView(av, new LinearLayout.LayoutParams(44, 44));
 
                       LinearLayout ri = new LinearLayout(this);
                       ri.setOrientation(LinearLayout.VERTICAL);
                       ri.setPadding(10, 0, 8, 0);
-                      ri.addView(ui6Text(n, 13, 0xff2f2459, true));
-                      ri.addView(ui6Text("Jatuh tempo: " + due + "   •   Rp " + amount,
-                          10, 0xff888398, false));
+                      ri.addView(ui7Text(n, 14, 0xff24204b, true));
+                      ri.addView(ui7Text("Jatuh tempo: " + due + "  •  Rp " + amount,
+                          11, 0xff77738c, false));
                       rr.addView(ri, new LinearLayout.LayoutParams(0, -2, 1));
 
-                      TextView badge = ui6Text(paidText, 10,
-                          "Lunas".equals(paidText) ? 0xff148b61 : 0xffd77a00, true);
+                      TextView badge = ui7Text(paidText, 10,
+                          isPaid ? 0xff148b61 : 0xffd77a00, true);
                       badge.setGravity(Gravity.CENTER);
-                      badge.setPadding(10, 7, 10, 7);
-                      badge.setBackground(ui6Bg(
-                          "Lunas".equals(paidText) ? 0xffdff7ed : 0xffffefd7, 20));
+                      badge.setPadding(10, 8, 10, 8);
+                      badge.setBackground(ui7Bg(
+                          isPaid ? 0xffdff7ed : 0xffffefd7, 18));
                       rr.addView(badge);
+
                       recent.addView(rr);
                       shown++;
                   }
                   content.addView(recent);
 
-                  ui6AddGap(content, 10);
-                  TextView foot = ui6Text("MikroTik • WiFi • Billing", 10, 0xff888398, false);
+                  ui7Gap(content, 10);
+                  TextView foot = ui7Text("NN-NET  •  MikroTik  •  WiFi  •  Billing", 11, 0xff888398, false);
                   foot.setGravity(Gravity.CENTER);
                   content.addView(foot);
-                  ui6AddGap(content, 8);
+                  ui7Gap(content, 8);
 
                   ui6BottomNav(root, 0);
                   setContentView(root);
               }
+              TextView ui7Text(String s, float size, int color, boolean bold) {
+                  TextView t = new TextView(this);
+                  t.setText(s);
+                  t.setTextSize(size);
+                  t.setTextColor(color);
+                  t.setGravity(Gravity.CENTER_VERTICAL);
+                  if (bold) t.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+                  return t;
+              }
+
+              GradientDrawable ui7Bg(int color, float radius) {
+                  GradientDrawable g = new GradientDrawable();
+                  g.setColor(color);
+                  g.setCornerRadius(radius);
+                  return g;
+              }
+
+              GradientDrawable ui7Stroke(int color, int strokeColor, int stroke, float radius) {
+                  GradientDrawable g = new GradientDrawable();
+                  g.setColor(color);
+                  g.setCornerRadius(radius);
+                  g.setStroke(stroke, strokeColor);
+                  return g;
+              }
+
+              LinearLayout ui7Card() {
+                  LinearLayout c = new LinearLayout(this);
+                  c.setOrientation(LinearLayout.VERTICAL);
+                  c.setBackground(ui7Bg(Color.WHITE, 22));
+                  return c;
+              }
+
+              void ui7Gap(LinearLayout p, int h) {
+                  Space s = new Space(this);
+                  p.addView(s, new LinearLayout.LayoutParams(1, h));
+              }
+
+              void ui7Stat(LinearLayout row, String icon, String label, String value, int iconBg) {
+                  LinearLayout c = ui7Card();
+                  c.setPadding(14, 14, 14, 14);
+
+                  TextView ic = ui7Text(icon, 22, 0xff5b2dcc, true);
+                  ic.setGravity(Gravity.CENTER);
+                  ic.setBackground(ui7Bg(iconBg, 22));
+                  c.addView(ic, new LinearLayout.LayoutParams(44, 44));
+
+                  TextView lab = ui7Text(label, 11, 0xff68627e, false);
+                  lab.setPadding(0, 9, 0, 0);
+                  c.addView(lab);
+
+                  TextView val = ui7Text(value, 21, 0xff24204b, true);
+                  val.setPadding(0, 2, 0, 0);
+                  c.addView(val);
+
+                  LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1);
+                  lp.setMargins(4, 0, 4, 0);
+                  row.addView(c, lp);
+              }
+
+              void ui7Menu(LinearLayout row, String icon, String label, String sub,
+                           View.OnClickListener click, int iconBg) {
+                  LinearLayout c = ui7Card();
+                  c.setGravity(Gravity.CENTER);
+                  c.setPadding(10, 14, 10, 14);
+
+                  TextView ic = ui7Text(icon, 24, 0xff5b2dcc, false);
+                  ic.setGravity(Gravity.CENTER);
+                  ic.setBackground(ui7Bg(iconBg, 24));
+                  c.addView(ic, new LinearLayout.LayoutParams(50, 50));
+
+                  TextView tx = ui7Text(label, 14, 0xff24204b, true);
+                  tx.setGravity(Gravity.CENTER);
+                  tx.setPadding(0, 9, 0, 0);
+                  c.addView(tx);
+
+                  TextView st = ui7Text(sub, 10, 0xff858099, false);
+                  st.setGravity(Gravity.CENTER);
+                  st.setPadding(0, 2, 0, 0);
+                  c.addView(st);
+
+                  c.setOnClickListener(click);
+
+                  LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1);
+                  lp.setMargins(4, 0, 4, 0);
+                  row.addView(c, lp);
+              }
+
               TextView ui6Text(String s, float size, int color, boolean bold) {
                   TextView t = new TextView(this);
                   t.setText(s);
@@ -494,6 +636,189 @@ jobs:
                   return b.toString();
               }
 
+
+              void showIsolir() {
+                  root = new LinearLayout(this);
+                  root.setOrientation(LinearLayout.VERTICAL);
+                  root.setBackgroundColor(0xfff6f3fc);
+
+                  LinearLayout page = new LinearLayout(this);
+                  page.setOrientation(LinearLayout.VERTICAL);
+                  page.setPadding(16, 10, 16, 12);
+
+                  LinearLayout header = new LinearLayout(this);
+                  header.setGravity(Gravity.CENTER_VERTICAL);
+
+                  TextView back = ui7Text("‹", 34, 0xff3b247e, false);
+                  back.setGravity(Gravity.CENTER);
+                  back.setOnClickListener(v -> showHome());
+                  header.addView(back, new LinearLayout.LayoutParams(48, 54));
+
+                  LinearLayout ht = new LinearLayout(this);
+                  ht.setOrientation(LinearLayout.VERTICAL);
+                  ht.addView(ui7Text("Isolir Pelanggan", 21, 0xff24204b, true));
+                  ht.addView(ui7Text("Blokir / Unblock PPPoE", 11, 0xff77738c, false));
+                  header.addView(ht, new LinearLayout.LayoutParams(0, -2, 1));
+                  page.addView(header);
+
+                  LinearLayout info = ui7Card();
+                  info.setPadding(14, 14, 14, 14);
+                  info.addView(ui7Text(
+                      "Isolir menggunakan PPP Secret MikroTik. " +
+                      "Saat aktif, pelanggan diblokir dan sesi PPP aktif dihentikan.",
+                      12, 0xff5f5a70, false
+                  ));
+                  page.addView(info);
+                  ui7Gap(page, 10);
+
+                  ScrollView sv = new ScrollView(this);
+                  LinearLayout isolationList = new LinearLayout(this);
+                  isolationList.setOrientation(LinearLayout.VERTICAL);
+                  sv.addView(isolationList);
+                  page.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1));
+
+                  int count = prefs.getInt("count", 0);
+                  if (count == 0) {
+                      isolationList.addView(ui7Text(
+                          "Belum ada pelanggan.", 16, 0xff77738c, false
+                      ));
+                  }
+
+                  for (int i = 0; i < count; i++) {
+                      final int index = i;
+                      String name = get("c_" + i + "_name", "");
+                      String ppp = get("c_" + i + "_ppp", name);
+                      if (name.isEmpty()) continue;
+
+                      LinearLayout card = ui7Card();
+                      card.setPadding(14, 12, 14, 12);
+
+                      LinearLayout row = new LinearLayout(this);
+                      row.setGravity(Gravity.CENTER_VERTICAL);
+
+                      TextView av = ui7Text("♙", 20, 0xff5b2dcc, true);
+                      av.setGravity(Gravity.CENTER);
+                      av.setBackground(ui7Bg(0xffeee8ff, 24));
+                      row.addView(av, new LinearLayout.LayoutParams(46, 46));
+
+                      LinearLayout inf = new LinearLayout(this);
+                      inf.setOrientation(LinearLayout.VERTICAL);
+                      inf.setPadding(10, 0, 8, 0);
+                      inf.addView(ui7Text(name, 14, 0xff24204b, true));
+                      inf.addView(ui7Text("PPPoE: " + ppp, 11, 0xff77738c, false));
+                      row.addView(inf, new LinearLayout.LayoutParams(0, -2, 1));
+
+                      Switch sw = new Switch(this);
+                      boolean isolated = "1".equals(get("c_" + i + "_isolated", "0"));
+                      sw.setChecked(isolated);
+                      sw.setText(isolated ? "Terisolir" : "Aktif");
+                      sw.setTextSize(10);
+                      sw.setTextColor(isolated ? 0xffd95f00 : 0xff148b61);
+
+                      sw.setOnCheckedChangeListener((buttonView, checked) -> {
+                          buttonView.setEnabled(false);
+                          new Thread(() -> {
+                              boolean ok = setIsolatedOnRouter(index, checked);
+                              runOnUiThread(() -> {
+                                  buttonView.setEnabled(true);
+                                  if (ok) {
+                                      prefs.edit().putString(
+                                          "c_" + index + "_isolated",
+                                          checked ? "1" : "0"
+                                      ).apply();
+                                      buttonView.setText(
+                                          checked ? "Terisolir" : "Aktif"
+                                      );
+                                      buttonView.setTextColor(
+                                          checked ? 0xffd95f00 : 0xff148b61
+                                      );
+                                      toast(checked
+                                          ? name + " berhasil diisolir"
+                                          : name + " berhasil di-unblock");
+                                  } else {
+                                      buttonView.setChecked(!checked);
+                                      toast("Gagal mengubah isolir " + name);
+                                  }
+                              });
+                          }).start();
+                      });
+
+                      row.addView(sw);
+                      card.addView(row);
+                      isolationList.addView(card);
+
+                      ui7Gap(isolationList, 8);
+                  }
+
+                  page.addView(ui7Text(
+                      "NN-NET • Isolir MikroTik", 11, 0xff888398, false
+                  ));
+                  root.addView(page);
+                  setContentView(root);
+              }
+
+              boolean setIsolatedOnRouter(int index, boolean isolated) {
+                  RouterApi api = null;
+                  try {
+                      String ip = get("mt_ip", "");
+                      if (ip.isEmpty()) return false;
+
+                      String username = get("c_" + index + "_ppp",
+                          get("c_" + index + "_name", ""));
+                      if (username.isEmpty()) return false;
+
+                      api = new RouterApi(
+                          ip,
+                          Integer.parseInt(get("mt_port", "8728")),
+                          get("mt_user", ""),
+                          get("mt_pass", "")
+                      );
+                      api.login();
+
+                      List<Map<String, String>> secrets =
+                          api.print("/ppp/secret/print");
+
+                      String secretId = null;
+                      for (Map<String, String> s : secrets) {
+                          if (username.equals(s.get("name"))) {
+                              secretId = s.get(".id");
+                              break;
+                          }
+                      }
+
+                      if (secretId == null) {
+                          api.close();
+                          return false;
+                      }
+
+                      api.command("/ppp/secret/set", new String[] {
+                          "=.id=" + secretId,
+                          "=disabled=" + (isolated ? "yes" : "no")
+                      });
+
+                      // If isolating, immediately disconnect an active PPP session.
+                      if (isolated) {
+                          List<Map<String, String>> active =
+                              api.print("/ppp/active/print");
+
+                          for (Map<String, String> a : active) {
+                              if (username.equals(a.get("name"))) {
+                                  String activeId = a.get(".id");
+                                  if (activeId != null) {
+                                      api.command("/ppp/active/remove",
+                                          new String[] {"=.id=" + activeId});
+                                  }
+                              }
+                          }
+                      }
+
+                      api.close();
+                      return true;
+                  } catch (Exception e) {
+                      if (api != null) api.close();
+                      return false;
+                  }
+              }
 
               void showSettings() {
                   base("Pengaturan MikroTik");
@@ -1182,6 +1507,21 @@ jobs:
                       return rows;
                   }
 
+                  void command(String cmd, String[] args) throws Exception {
+                      writeSentence(cmd, args);
+
+                      while (true) {
+                          ArrayList<String> sentence = readSentence();
+                          if (sentence.size() == 0) continue;
+
+                          String type = sentence.get(0);
+                          if ("!done".equals(type)) return;
+                          if ("!trap".equals(type)) {
+                              throw new IOException(sentence.toString());
+                          }
+                      }
+                  }
+
                   void writeSentence(String cmd, String[] args) throws Exception {
                       writeWord(cmd);
                       for (String a : args) writeWord(a);
@@ -1300,5 +1640,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: WiFiBillingWA-v6-UI-MikroTik-debug
+          name: NNNet-WiFiBilling-v8-Isolir-debug
           path: app/build/outputs/apk/debug/app-debug.apk
